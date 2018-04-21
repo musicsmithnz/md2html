@@ -1,0 +1,59 @@
+const fs = require('fs');
+const util = require('util');
+const readFile = util.promisify(fs.readFile);
+
+const markdown = require("markdown").markdown;
+const cleaner = require('clean-html');
+const cleaner_options = {
+    'break-around-tags': ['body', 'li', 'blockquote', 'br', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'head', 'hr', 'link', 'meta', 'p', 'table', 'title', 'td', 'tr'],
+    'indent': '  '
+};
+const template_filename = "base_template.html";
+const markdown_filename = "bitcoin_talk.md";
+const html_file_name = "bitcoin_talk.html";
+var program = require('commander');
+ 
+program
+  .version('0.0.1')
+  .option('-c, --component', "create as a component, with no boilerplate html")
+  .parse(process.argv);
+
+async function readTemplate(){
+    var html_template = await readFile('base_template.html', 'utf-8');
+    return html_template
+}
+
+async function readMarkdown(){
+    var markup_main = await readFile('bitcoin_talk.md', 'utf-8');
+    var html_main = markdown.toHTML(markup_main)
+    return html_main
+}
+
+if ( program.component != true ){
+    Promise.all([readMarkdown(), readTemplate()]).then(function(data){
+        let main_html=data[0];
+        let template=data[1];
+        let at_string = template.indexOf('<main>') + 6;
+        main_html = [ template.slice(0, at_string), main_html, template.slice(at_string)].join('');
+        cleaner.clean(main_html, function(html){
+            fs.writeFile(html_file_name, html, function(err) {
+                if(err) {
+                    return console.log(err);
+                }
+                console.log("The file was saved!");
+            }); 
+        });
+    })
+} else {
+    Promise.all([readMarkdown()]).then(function(data){
+        let main_html=data[0];
+        cleaner.clean(main_html, function(html){
+            fs.writeFile(html_file_name, html, function(err) {
+                if(err) {
+                    return console.log(err);
+                }
+                console.log("The file was saved!");
+            }); 
+        });
+    })
+} 
